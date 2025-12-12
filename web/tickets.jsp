@@ -1,265 +1,54 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
-<%@ page import="java.util.*,java.util.HashMap,models.User" %>
+﻿<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page import="java.util.*, models.User" %>
 <%
-    // ✅ VERIFICACIÓN ROBUSTA DE SESIÓN
-    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    response.setHeader("Pragma", "no-cache");
-    response.setDateHeader("Expires", 0);
-    User user = null;
-    String clientId = null;
-    
-    if (session != null) {
-        user = (User) session.getAttribute("user");
-        clientId = (String) session.getAttribute("clientId");
-        System.out.println("🎫 tickets.jsp - Sesión detectada:");
-        System.out.println("   - user: " + (user != null ? "PRESENTE" : "AUSENTE"));
-        System.out.println("   - clientId: " + clientId);
-    } else {
-        System.out.println("🎫 tickets.jsp - NO hay sesión activa");
+response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+response.setHeader("Pragma", "no-cache");
+response.setDateHeader("Expires", 0);
+User user = null;
+String clientId = null;
+if (session != null) {
+    user = (User) session.getAttribute("user");
+    clientId = (String) session.getAttribute("clientId");
+}
+if (user == null) { response.sendRedirect("index.jsp"); return; }
+if (clientId == null) { clientId = user.getDni(); session.setAttribute("clientId", clientId); }
+List<HashMap<String, String>> tickets = (List<HashMap<String, String>>) request.getAttribute("tickets");
+int asignadoCount = 0, atendidoCount = 0, solucionadoCount = 0, canceladoCount = 0;
+if (tickets != null) {
+    for (HashMap<String, String> ticket : tickets) {
+        String estado = ticket.get("estado");
+        if ("ASIGNADO".equalsIgnoreCase(estado)) asignadoCount++;
+        else if ("ATENDIDO".equalsIgnoreCase(estado)) atendidoCount++;
+        else if ("SOLUCIONADO".equalsIgnoreCase(estado)) solucionadoCount++;
+        else if ("CANCELADO".equalsIgnoreCase(estado)) canceladoCount++;
     }
-    
-    // ✅ REDIRECCIÓN INMEDIATA si no hay usuario
-    if (user == null) {
-        System.out.println("❌ tickets.jsp - Redirigiendo a login (sin usuario)");
-        response.sendRedirect("index.jsp");
-        return;
-    }
-    
-    // ✅ GARANTIZAR que clientId esté presente
-    if (clientId == null) {
-        clientId = user.getDni();
-        session.setAttribute("clientId", clientId);
-        System.out.println("🔄 clientId establecido desde user: " + clientId);
-    }
-    
-    List<HashMap<String, String>> tickets = (List<HashMap<String, String>>) request.getAttribute("tickets");
-    
-    // ✅ Calcular contadores
-    int asignadoCount = 0, atendidoCount = 0, solucionadoCount = 0, canceladoCount = 0;
-    if (tickets != null) {
-        for (HashMap<String, String> ticket : tickets) {
-            String estado = ticket.get("estado");
-            if ("ASIGNADO".equalsIgnoreCase(estado)) asignadoCount++;
-            else if ("ATENDIDO".equalsIgnoreCase(estado)) atendidoCount++;
-            else if ("SOLUCIONADO".equalsIgnoreCase(estado)) solucionadoCount++;
-            else if ("CANCELADO".equalsIgnoreCase(estado)) canceladoCount++;
-        }
-    }
-    
-    System.out.println("✅ tickets.jsp - Renderizando página para: " + user.getNombre() + " (" + clientId + ")");
+}
+int totalCount = (tickets != null) ? tickets.size() : 0;
+String userInitial = "U";
+if (user.getNombre() != null && user.getNombre().length() > 0) userInitial = user.getNombre().substring(0, 1).toUpperCase();
+String userName = (user.getNombre() != null) ? user.getNombre() : "";
+String userApellido = (user.getApellido() != null) ? user.getApellido() : "";
 %>
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <meta charset="utf-8"/>
-    <title>Mis Tickets - TOP TECH</title>
-    <link rel="stylesheet" href="assets/css/style.css"/>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-    <meta http-equiv="Pragma" content="no-cache"/>
-    <meta http-equiv="Expires" content="0"/>
-    <style>
-        /* ✅ ESTILOS ADICIONALES PARA EL FORMULARIO DE PAGO */
-        .payment-form-container {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .payment-select {
-            padding: 8px 12px;
-            border: 2px solid #3498db;
-            border-radius: 5px;
-            background: white;
-            font-size: 14px;
-            min-width: 180px;
-        }
-        
-        .btn-pay {
-            background-color: #2ecc71;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            padding: 8px 15px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        .btn-pay:hover {
-            background-color: #27ae60;
-        }
-        
-        .btn-pay:disabled {
-            background-color: #95a5a6;
-            cursor: not-allowed;
-        }
-        
-        .payment-method-info {
-            font-size: 12px;
-            color: #7f8c8d;
-            margin-top: 5px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Tickets - UltraTech</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(180deg,#d7ebf7,#fff);min-height:100vh}.main-header{background:linear-gradient(135deg,#0b2b60,#094e87);color:#fff;box-shadow:0 4px 20px rgba(0,0,0,.15);position:sticky;top:0;z-index:1000}.header-content{max-width:1400px;margin:0 auto;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}.brand{display:flex;align-items:center;gap:1rem}.brand-logo{width:50px;height:50px;border-radius:12px;object-fit:cover}.brand-text h1{font-size:1.25rem;font-weight:800;letter-spacing:2px}.brand-text p{font-size:.75rem;opacity:.8;letter-spacing:2px;text-transform:uppercase}.user-section{display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap}.user-info{display:flex;align-items:center;gap:.75rem;background:rgba(255,255,255,.1);padding:.5rem 1rem;border-radius:50px}.user-avatar{width:36px;height:36px;background:#7ed0f9;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0b2b60}.user-name{font-weight:600;font-size:.9rem}.btn-logout{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:.625rem 1.25rem;border-radius:12px;font-weight:600;font-size:.875rem;cursor:pointer}.welcome-section{background:linear-gradient(135deg,#cfe7f6,#d7ebf7);padding:2rem 1.5rem;text-align:center}.welcome-section h2{font-size:1.5rem;color:#0b2b60;margin-bottom:.5rem}.dni-badge{display:inline-flex;background:#fff;padding:.5rem 1rem;border-radius:50px;font-size:.875rem;color:#475569;box-shadow:0 2px 8px rgba(0,0,0,.05)}.main-container{max-width:1400px;margin:0 auto;padding:2rem 1.5rem}.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.25rem;margin-bottom:2rem}.stat-card{background:#fff;border-radius:16px;padding:1.5rem;display:flex;align-items:center;gap:1rem;box-shadow:0 4px 12px rgba(0,0,0,.08);border:2px solid transparent}.stat-card.asignado{border-color:#3b82f6}.stat-card.atendido{border-color:#f59e0b}.stat-card.solucionado{border-color:#10b981}.stat-card.cancelado{border-color:#ef4444}.stat-icon{width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.75rem}.stat-card.asignado .stat-icon{background:#dbeafe}.stat-card.atendido .stat-icon{background:#fef3c7}.stat-card.solucionado .stat-icon{background:#d1fae5}.stat-card.cancelado .stat-icon{background:#fee2e2}.stat-content h3{font-size:.875rem;color:#64748b;margin-bottom:.25rem}.stat-number{font-size:1.5rem;font-weight:800;color:#1e293b}.search-section{background:#fff;border-radius:16px;padding:1.5rem;margin-bottom:2rem;box-shadow:0 4px 12px rgba(0,0,0,.08)}.search-box{display:flex;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap}.search-input{flex:1;min-width:280px;padding:.875rem 1rem;font-size:1rem;border:2px solid #e2e8f0;border-radius:12px}.search-input:focus{outline:0;border-color:#0b6fc2}.btn-clear{padding:.875rem 1.5rem;background:#f1f5f9;color:#334155;border:none;border-radius:12px;font-weight:600;cursor:pointer}.filter-pills{display:flex;gap:.75rem;flex-wrap:wrap}.filter-pill{padding:.5rem 1rem;background:#f1f5f9;color:#475569;border:none;border-radius:50px;font-size:.875rem;font-weight:600;cursor:pointer}.filter-pill.active{background:#0b6fc2;color:#fff}.section-title{font-size:1.25rem;color:#0b2b60;margin-bottom:1.5rem}.ticket-card{background:#fff;border-radius:16px;margin-bottom:1.25rem;box-shadow:0 4px 12px rgba(0,0,0,.08);overflow:hidden;border-left:5px solid #0b6fc2}.ticket-card.ASIGNADO{border-left-color:#3b82f6}.ticket-card.ATENDIDO{border-left-color:#f59e0b}.ticket-card.SOLUCIONADO{border-left-color:#10b981}.ticket-card.CANCELADO{border-left-color:#ef4444}.ticket-header{display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem;background:#f8fafc;border-bottom:1px solid #f1f5f9;flex-wrap:wrap;gap:1rem}.ticket-id{font-weight:700;color:#0b6fc2;font-size:1.125rem}.ticket-meta{display:flex;gap:1rem;flex-wrap:wrap}.ticket-date{font-size:.875rem;color:#64748b}.ticket-status{padding:.375rem .875rem;border-radius:50px;font-size:.75rem;font-weight:700;text-transform:uppercase}.ticket-status.ASIGNADO{background:#dbeafe;color:#1d4ed8}.ticket-status.ATENDIDO{background:#fef3c7;color:#b45309}.ticket-status.SOLUCIONADO{background:#d1fae5;color:#059669}.ticket-status.CANCELADO{background:#fee2e2;color:#b91c1c}.ticket-body{padding:1.5rem}.ticket-description{color:#334155;margin-bottom:1.25rem;line-height:1.6}.ticket-pricing{display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;padding:1rem;background:#f8fafc;border-radius:12px}.price-item{display:flex;flex-direction:column}.price-label{font-size:.75rem;color:#64748b;text-transform:uppercase}.price-value{font-size:1.125rem;font-weight:700;color:#0b6fc2}.price-value.danger{color:#ef4444}.price-value.total{font-size:1.25rem;color:#10b981}.diagnostic-badge{display:inline-flex;padding:.5rem 1rem;border-radius:12px;font-size:.875rem;font-weight:600;margin-bottom:1.25rem}.diagnostic-badge.paid{background:#d1fae5;color:#059669}.diagnostic-badge.pending{background:#fee2e2;color:#b91c1c}.ticket-actions{display:flex;flex-wrap:wrap;gap:1rem}.payment-form{display:flex;gap:.75rem;flex-wrap:wrap;flex:1;min-width:300px}.payment-select{flex:1;min-width:180px;padding:.75rem 1rem;font-size:.875rem;border:2px solid #e2e8f0;border-radius:12px;background:#fff}.btn-pay{padding:.75rem 1.5rem;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:.875rem;cursor:pointer;box-shadow:0 4px 15px rgba(16,185,129,.3)}.btn-pay:disabled{background:#cbd5e1;cursor:not-allowed;box-shadow:none}.btn-boleta{padding:.75rem 1.25rem;background:#334155;color:#fff;border:none;border-radius:12px;font-weight:600;font-size:.875rem;text-decoration:none}.empty-state{text-align:center;padding:4rem 2rem;background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,.08)}.empty-state .empty-icon{font-size:4rem;margin-bottom:1rem;opacity:.5}.empty-state h3{color:#475569;margin-bottom:.5rem}.empty-state p{color:#94a3b8}.no-results{text-align:center;padding:2rem;background:#fee2e2;border-radius:16px;margin:1rem 0;display:none}.no-results.visible{display:block}.no-results p{color:#b91c1c;font-weight:500}@media(max-width:768px){.header-content{flex-direction:column;text-align:center}.stats-grid{grid-template-columns:repeat(2,1fr)}.ticket-header{flex-direction:column;align-items:flex-start}.payment-form{flex-direction:column;min-width:100%}}@media(max-width:480px){.stats-grid{grid-template-columns:1fr}.main-container{padding:1rem}}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="brand">
-                <h1>TOP TECH</h1>
-                <p>SERVICIO TÉCNICO</p>
-            </div>
-            <div class="user-info">
-                <span>Usuario: <strong><%= user.getNombre() %> <%= user.getApellido() %></strong></span>
-                <form action="logout" method="post">
-                    <button type="submit" class="btn-logout">Cerrar sesión</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="welcome-section">
-            <h2>Bienvenido(a), <%= user.getNombre() %> <%= user.getApellido() %></h2>
-            <p>DNI: <strong><%= clientId %></strong> - Consulta el estado de tus tickets y pagos pendientes.</p>
-        </div>
-
-        <div class="stats-grid">
-            <div class="stat-card asignado">
-                <h3>Asignado</h3>
-                <div class="stat-number"><%= asignadoCount %> Tickets</div>
-            </div>
-            <div class="stat-card atendido">
-                <h3>Atendido</h3>
-                <div class="stat-number"><%= atendidoCount %> Tickets</div>
-            </div>
-            <div class="stat-card solucionado">
-                <h3>Solucionado</h3>
-                <div class="stat-number"><%= solucionadoCount %> Tickets</div>
-            </div>
-            <div class="stat-card cancelado">
-                <h3>Cancelado</h3>
-                <div class="stat-number"><%= canceladoCount %> Tickets</div>
-            </div>
-        </div>
-
-        <% if (asignadoCount > 0) { %>
-        <div class="alert">
-            <div class="alert-icon">⚠️</div>
-            <div>¡Atención! Tienes <%= asignadoCount %> ticket(s) pendiente(s) de atención.</div>
-        </div>
-        <% } %>
-
-        <div class="tickets-section">
-            <h2>Mis Tickets</h2>
-            
-            <div id="list">
-                <% if (tickets == null || tickets.isEmpty()) { %>
-                    <div class="no-tickets">
-                        <p>No tiene tickets registrados.</p>
-                    </div>
-                <% } else {
-                    for (HashMap<String, String> t : tickets) { 
-                        String estado = t.get("estado");
-                        boolean puedePagar = "SOLUCIONADO".equalsIgnoreCase(estado) || "ATENDIDO".equalsIgnoreCase(estado);
-                %>
-                        <div class="ticket">
-                            <div class="ticket-header">
-                                <div class="ticket-id">ID: <%= t.get("id") %></div>
-                                <div class="ticket-date">Fecha: <%= t.get("fecha") %></div>
-                                <div class="ticket-status">Estado: <%= estado %></div>
-                            </div>
-                            <div class="ticket-desc"><strong>Descripción:</strong> <%= t.get("descripcion") %></div>
-                            <div class="ticket-amount">Monto: S/ <%= t.get("monto") %></div>
-                            
-                            <div class="ticket-actions">
-                                <!-- ✅ FORMULARIO DE PAGO CORREGIDO -->
-                                <div class="payment-form-container">
-                                    <form action="pay" method="get" style="display:inline-block">
-                                        <input type="hidden" name="ticketId" value="<%= t.get("id") %>"/>
-                                        <select name="method" class="payment-select" <%= !puedePagar ? "disabled" : "" %>>
-                                            <option value="">Seleccionar método</option>
-                                            <option value="paypal">PayPal (Sandbox)</option>
-                                            <option value="yape">Yape</option>
-                                            <option value="card">Tarjeta (Visa/Mastercard)</option>
-                                        </select>
-                                        <button type="submit" class="btn btn-pay" <%= !puedePagar ? "disabled" : "" %>>
-                                            <%= puedePagar ? "Pagar" : "No disponible" %>
-                                        </button>
-                                    </form>
-                                    
-                                    <div class="payment-method-info">
-                                        <% if (!puedePagar) { %>
-                                            <span style="color: #e74c3c;">⏳ El pago estará disponible cuando el ticket esté en estado "Atendido" o "Solucionado"</span>
-                                        <% } else { %>
-                                            <span style="color: #27ae60;">✅ Pago disponible</span>
-                                        <% } %>
-                                    </div>
-                                </div>
-                                
-                                <div style="margin-top: 10px;">
-                                    <a class="btn btn-download" href="download?id=<%= t.get("id") %>">Descargar boleta (HTML)</a>
-                                    <a class="btn btn-download" href="report?id=<%= t.get("id") %>">Descargar detalle (PDF)</a>
-                                </div>
-                            </div>
-                        </div>
-                <%  } } %>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        // ✅ EVITAR CACHE DEL NAVEGADOR
-        window.onpageshow = function(event) {
-            if (event.persisted) {
-                console.log("🔄 Página cargada desde cache, recargando...");
-                window.location.reload();
-            }
-        };
-        
-        // ✅ PREVENIR navegación con botones atrás/adelante
-        history.pushState(null, null, location.href);
-        window.onpopstate = function(event) {
-            history.go(1);
-        };
-        
-        // ✅ MEJORAR USABILIDAD DEL FORMULARIO DE PAGO
-        document.addEventListener('DOMContentLoaded', function() {
-            const paymentForms = document.querySelectorAll('form[action="pay"]');
-            
-            paymentForms.forEach(form => {
-                const select = form.querySelector('select[name="method"]');
-                const button = form.querySelector('button[type="submit"]');
-                
-                // Habilitar/deshabilitar botón según selección
-                select.addEventListener('change', function() {
-                    if (this.value && !button.disabled) {
-                        button.style.opacity = '1';
-                        button.textContent = 'Pagar con ' + this.options[this.selectedIndex].text;
-                    } else {
-                        button.style.opacity = '0.7';
-                        button.textContent = 'Pagar';
-                    }
-                });
-                
-                // Validación antes de enviar
-                form.addEventListener('submit', function(e) {
-                    if (!select.value) {
-                        e.preventDefault();
-                        alert('Por favor selecciona un método de pago');
-                        return false;
-                    }
-                    
-                    // Mostrar confirmación
-                    const ticketId = form.querySelector('input[name="ticketId"]').value;
-                    const method = select.options[select.selectedIndex].text;
-                    const confirmar = confirm(`¿Estás seguro de que quieres pagar el ticket ${ticketId} usando ${method}?`);
-                    
-                    if (!confirmar) {
-                        e.preventDefault();
-                        return false;
-                    }
-                });
-            });
-        });
-    </script>
+<header class="main-header"><div class="header-content"><div class="brand"><img src="assets/images/LOGO1.png" alt="UltraTech" class="brand-logo"><div class="brand-text"><h1>ULTRATECH</h1><p>Servicio Tecnico</p></div></div><div class="user-section"><div class="user-info"><div class="user-avatar"><%= userInitial %></div><span class="user-name"><%= userName %> <%= userApellido %></span></div><form action="logout" method="post" style="margin:0"><button type="submit" class="btn-logout">Cerrar sesion</button></form></div></div></header>
+<section class="welcome-section"><h2>Bienvenido, <%= userName %></h2><div class="dni-badge">DNI: <strong><%= clientId %></strong></div></section>
+<main class="main-container">
+<div class="stats-grid"><div class="stat-card asignado"><div class="stat-icon"></div><div class="stat-content"><h3>Asignados</h3><div class="stat-number"><%= asignadoCount %></div></div></div><div class="stat-card atendido"><div class="stat-icon"></div><div class="stat-content"><h3>En Atencion</h3><div class="stat-number"><%= atendidoCount %></div></div></div><div class="stat-card solucionado"><div class="stat-icon"></div><div class="stat-content"><h3>Solucionados</h3><div class="stat-number"><%= solucionadoCount %></div></div></div><div class="stat-card cancelado"><div class="stat-icon"></div><div class="stat-content"><h3>Cancelados</h3><div class="stat-number"><%= canceladoCount %></div></div></div></div>
+<div class="search-section"><div class="search-box"><input type="text" id="searchInput" class="search-input" placeholder="Buscar..." onkeyup="filtrarTickets()"><button class="btn-clear" onclick="limpiarBusqueda()">Limpiar</button></div><div class="filter-pills"><button class="filter-pill active" onclick="filtrarPorEstado('TODOS',this)">Todos (<%= totalCount %>)</button><button class="filter-pill" onclick="filtrarPorEstado('ASIGNADO',this)">Asignado (<%= asignadoCount %>)</button><button class="filter-pill" onclick="filtrarPorEstado('ATENDIDO',this)">Atendido (<%= atendidoCount %>)</button><button class="filter-pill" onclick="filtrarPorEstado('SOLUCIONADO',this)">Solucionado (<%= solucionadoCount %>)</button><button class="filter-pill" onclick="filtrarPorEstado('CANCELADO',this)">Cancelado (<%= canceladoCount %>)</button></div></div>
+<section class="tickets-section"><h2 class="section-title"> Mis Tickets</h2><div id="noResults" class="no-results"><p>No se encontraron tickets.</p></div><div id="ticketsList">
+<% if (tickets == null || tickets.isEmpty()) { %><div class="empty-state"><div class="empty-icon"></div><h3>No tienes tickets registrados</h3><p>Cuando lleves tu equipo a reparar, aparecera aqui.</p></div><% } else { for (HashMap<String, String> t : tickets) { String estado = t.get("estado"); String ticketId = t.get("id"); String descripcion = t.get("descripcion"); String fecha = t.get("fecha"); boolean puedePagar = "SOLUCIONADO".equalsIgnoreCase(estado) || "ATENDIDO".equalsIgnoreCase(estado); boolean diagPagado = "SI".equals(t.get("diagnosticoPagado")); double montoBase = 0; try { montoBase = Double.parseDouble(t.get("monto")); } catch(Exception e) { montoBase = 0; } double montoTotal = diagPagado ? montoBase : montoBase + 50.0; String montoBaseStr = String.format("%.2f", montoBase); String montoTotalStr = String.format("%.2f", montoTotal); String diagClass = diagPagado ? "paid" : "pending"; String diagText = diagPagado ? "PAGADO" : "PENDIENTE (+S/50)"; String btnText = puedePagar ? ("Pagar S/" + montoTotalStr) : "No disponible"; %>
+<div class="ticket-card <%= estado %>" data-estado="<%= estado %>" data-id="<%= ticketId %>" data-descripcion="<%= descripcion %>"><div class="ticket-header"><div class="ticket-id"> <%= ticketId %></div><div class="ticket-meta"><span class="ticket-date"> <%= fecha %></span><span class="ticket-status <%= estado %>"><%= estado %></span></div></div><div class="ticket-body"><p class="ticket-description"><strong>Descripcion:</strong> <%= descripcion %></p><div class="diagnostic-badge <%= diagClass %>"> Diagnostico: <%= diagText %></div><div class="ticket-pricing"><div class="price-item"><span class="price-label">Monto Reparacion</span><span class="price-value">S/ <%= montoBaseStr %></span></div><% if (!diagPagado) { %><div class="price-item"><span class="price-label">+ Diagnostico</span><span class="price-value danger">S/ 50.00</span></div><% } %><div class="price-item"><span class="price-label">Total</span><span class="price-value total">S/ <%= montoTotalStr %></span></div></div><div class="ticket-actions"><form action="pay" method="get" class="payment-form"><input type="hidden" name="ticketId" value="<%= ticketId %>"><input type="hidden" name="montoTotal" value="<%= montoTotal %>"><select name="method" class="payment-select" <%= !puedePagar ? "disabled" : "" %>><option value="">Metodo de pago</option><option value="yape">Yape</option><option value="card">Tarjeta</option></select><button type="submit" class="btn-pay" <%= !puedePagar ? "disabled" : "" %>><%= btnText %></button></form><a class="btn-boleta" href="boleta?ids=<%= ticketId %>&format=html" target="_blank"> Boleta</a></div></div></div>
+<% } } %></div></section></main>
+<script>var estadoActual='TODOS';function filtrarTickets(){var s=document.getElementById('searchInput').value.toLowerCase();var t=document.querySelectorAll('.ticket-card');var n=document.getElementById('noResults');var v=0;for(var i=0;i<t.length;i++){var c=t[i];var id=c.getAttribute('data-id').toLowerCase();var d=c.getAttribute('data-descripcion').toLowerCase();var e=c.getAttribute('data-estado');var ms=id.indexOf(s)!==-1||d.indexOf(s)!==-1;var me=estadoActual==='TODOS'||e===estadoActual;if(ms&&me){c.style.display='block';v++;}else{c.style.display='none';}}if(v===0&&t.length>0){n.classList.add('visible');}else{n.classList.remove('visible');}}function filtrarPorEstado(e,b){estadoActual=e;var p=document.querySelectorAll('.filter-pill');for(var i=0;i<p.length;i++){p[i].classList.remove('active');}b.classList.add('active');filtrarTickets();}function limpiarBusqueda(){document.getElementById('searchInput').value='';estadoActual='TODOS';var p=document.querySelectorAll('.filter-pill');for(var i=0;i<p.length;i++){p[i].classList.remove('active');}document.querySelector('.filter-pill').classList.add('active');filtrarTickets();}</script>
 </body>
 </html>
